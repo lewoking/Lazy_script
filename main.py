@@ -11,15 +11,15 @@ x, y = pg.position()
 # p = pg.locateOnScreen('find.png')
 # x,y= pg.center(find)
 
-f = pg.locateOnScreen('findp.png')
+f = pg.locateOnScreen('yes.png')
 px, py = pg.center(f)
 
 pg.click(x, y)
 
+pg.click(px-202, py-202)
+
 pg.click(px, py)
 
-pg.click(px, py + 202)
-
 try:
     pg.locateOnScreen('sucess.png')
 except expression as identifier:
@@ -32,9 +32,9 @@ pg.click(x, y + 18)
 pg.click(x, y + 18)
 
 
-pg.click(px, py + 47)
+pg.click(px, py -155)
 
-pg.click(px, py + 202)
+pg.click(px, py)
 
 try:
     pg.locateOnScreen('sucess.png')
@@ -47,9 +47,9 @@ pg.click(x, y + 47)
 pg.click(x, y + 47)
 
 
-pg.click(px, py + 85)
+pg.click(px, py-117)
 
-pg.click(px, py + 202)
+pg.click(px, py)
 
 try:
     pg.locateOnScreen('sucess.png')
