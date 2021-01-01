@@ -1,46 +1,104 @@
-import pandas as pd  
+#!/usr/bin/python
+# -*- coding: UTF-8 -*-
+import os
+import pandas as pd
+import sys ,getopt
 from sqlalchemy import create_engine  
 import cx_Oracle  
-db=cx_Oracle.connect('userid','password','10.10.1.10:1521/dbinstance')  
-print (db.version)  
-cr=db.cursor()  
-sql='select * from sys_user'  
-cr.execute(sql)  
-rs=cr.fetchall()  
-zz=pd.DataFrame(rs);  
-print (zz)  
-db.close() 
-
-#coding=utf-8
 from pandas import Series,DataFrame,merge
 import numpy as np
-data=DataFrame([{"id":0,"name":'lxh',"age":20,"cp":'lm'},{"id":1,"name":'xiao',"age":40,"cp":'ly'},{"id":2,"name":'hua',"age":4,"cp":'yry'},{"id":3,"name":'be',"age":70,"cp":'old'}])
-data1=DataFrame([{"id":100,"name":'lxh','cs':10},{"id":101,"name":'xiao','cs':40},{"id":102,"name":'hua2','cs':50}])
-data2=DataFrame([{"id":0,"name":'lxh','cs':10},{"id":101,"name":'xiao','cs':40},{"id":102,"name":'hua2','cs':50}])
- 
-print "单个列名做为内链接的连接键\r\n",merge(data,data1,on="name",suffixes=('_a','_b'))
-print "多列名做为内链接的连接键\r\n",merge(data,data2,on=("name","id"))
-print '不指定on则以两个DataFrame的列名交集做为连接键\r\n',merge(data,data2) #这里使用了id与name
- 
-#使用右边的DataFrame的行索引做为连接键
-##设置行索引名称
-indexed_data1=data1.set_index("name")
-print "使用右边的DataFrame的行索引做为连接键\r\n",merge(data,indexed_data1,left_on='name',right_index=True)
- 
- 
-print '左外连接\r\n',merge(data,data1,on="name",how="left",suffixes=('_a','_b'))
-print '左外连接1\r\n',merge(data1,data,on="name",how="left")
-print '右外连接\r\n',merge(data,data1,on="name",how="right")
-data3=DataFrame([{"mid":0,"mname":'lxh','cs':10},{"mid":101,"mname":'xiao','cs':40},{"mid":102,"mname":'hua2','cs':50}])
- 
-#当左右两个DataFrame的列名不同，当又想做为连接键时可以使用left_on与right_on来指定连接键
-print "使用left_on与right_on来指定列名字不同的连接键\r\n",merge(data,data3,left_on=["name","id"],right_on=["mname","mid"])
 
 
-# union 影响效率？
+def main(argv):
+    year = '2021'
+    device = 'L'
+    outputfile = 'max.csv'
+    try:
+        opts, args = getopt.getopt(argv,"hy:d:o:",["year=","device=","ofile="])
+    except getopt.GetoptError:
+        print ('test.py -y <year> -d <device> -o <outputfile>')
+        print ("            2020 \n                     TR:变压器 \n                     lN:线路 \n\
+                                 LD:负荷\n                                 max.csv")
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt == '-h':
+            print ('test.py -y <year> -d <device> -o <outputfile>')
+            print ("            2020 \n                     TR:变压器 \n                     lN:线路\
+                 \n                     LD:负荷\n                                 max.csv")
+            sys.exit()
+        elif opt in ("-y", "--year"):
+            year = arg
+        elif opt in ("-d", "--device"):
+            device = arg
+        elif opt in ("-o", "--ofile"):
+            outputfile = arg
+    print ('输入的年份为：%s'%(year))
+    print ('输入的设备为：%s'%(device))
+    print ('输出的文件为：%s' %(outputfile))
+    return year,device,outputfile
 
-# 使用  select max(cur_67),time from yc_his_0001  where    最大发生时间不一致 不能联合。
-sql = select max(%s),time from %s  where to_char(time,'yyyy')=to_char(sysdate,'yyyy')  #本年度
 
 
-  select * from 表 where time>=TRUNC(SYSDATE, 'MM') and time<=last_day(SYSDATE) #查询本月
+# import pandas as pd  
+# from sqlalchemy import create_engine  
+# import cx_Oracle  
+def sql(year,DF,suffix) :
+    db=cx_Oracle.connect('userid','password','10.10.1.10:1521/dbinstance')  
+    print (db.version)  
+    cr=db.cursor()  
+    # sql='select * from sys_user'
+    with open(outputfile, 'wt') as f:
+        print('PATHNAME_y,BRK_NAME,BRK_ID,max,occur_time', file=f)
+    for i in range(len(DF)):
+        ycid = '0' + DF.iloc[i,0] + suffix #yc_ID
+        sqlsel= 'select * from ems.SVR_YC_SAMPLE_DEFINE where YC_ID in (%s) ;' %(ycid)
+        cr.execute(sqlsel)  
+        rs=cr.fetchall()  
+        ycsd=pd.DataFrame(rs)
+        his = ycsd.iloc[0,2]
+        cur = ycsd.iloc[0,3]
+        sql =  'select %s,occur_time from(select %s,occur_time from %s  \
+            where occur_time >= to_date(%s,\'yyyy\')  order by %s desc ) where rownum =1 ;' %(cur,cur,his,year,cur)
+        cr.execute(sql)  
+        rs=cr.fetchall()  
+        maxpqi=pd.DataFrame(rs)
+        maxp=maxpqi.iloc[0,0] #最大值
+        octime=maxpqi.iloc[0,1] #最大值时刻
+        with open(outputfile, 'wt') as f:
+            print('%s,%s,%s,%s,%s,'%(DF.iloc[i,9],DF.iloc[i,2],DF.iloc[i,0],maxp,octime), file=f)
+    db.close() 
+
+def mergedb():
+    ln = pd.read_csv('C:\\Users\\liujg\\Downloads\\ACLN_DOT.csv',usecols=["ACLN_DOT_ID","FAC_ID","ACLN_DOT_NAME","ACLN_ID","BAY_ID","PATHNAME"])  #sql  取值
+    brk = pd.read_csv('C:\\Users\\liujg\\Downloads\\BRK_DEVICE.csv',usecols=["BRK_ID","FAC_ID","BRK_NAME","BRK_TYPE","BAY_ID","PATHNAME"]) 
+    brk['BAY_ID']=brk['BAY_ID'].fillna('null') #标记无bay
+    brk = brk[~brk['BAY_ID'].isin(['null'])] # 反选无bay
+    ln['BAY_ID']=ln['BAY_ID'].fillna('null') #标记无bay
+    ln = ln[~ln['BAY_ID'].isin(['null'])] # 反选无bay
+    sqldb= merge(brk,ln,on=("BAY_ID","FAC_ID"),how='inner') #取交集
+    return sqldb
+
+
+def pqi(device):
+    suffix ="0030" # 负荷p
+    suffix ="0040" # 负荷q
+    suffix ="0050" # 负荷I
+    suffix ="0050" #主变P
+    suffix ="0060" #主变q
+    suffix ="0070" #主变I
+    suffix ="0040" # 线路p
+    suffix ="0050" # 线路q
+    suffix ="0060" # 线路I
+
+    return suffix
+
+
+
+
+if __name__ == "__main__":
+    year,device,outputfile = main(sys.argv[1:]) 
+    sqldb= mergedb()
+    suffix=pqi(device)
+    sql(year,sqldb,suffix)
+
+
