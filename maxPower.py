@@ -52,7 +52,7 @@ def sql(year, DF, suffix):
     with open(outputfile, "wt") as f:
         print("PATHNAME_y,BRK_NAME,BRK_ID,max,occur_time", file=f)
     for i in range(len(DF)):
-        ycid = "0" + DF.iloc[i, 0] + suffix  # yc_ID
+        ycid = "0" + str(DF.iloc[i, 0]) + suffix  # yc_ID
         sqlsel = "select * from ems.SVR_YC_SAMPLE_DEFINE where YC_ID in (%s) ;" % (ycid)
         cr.execute(sqlsel)
         rs = cr.fetchall()
